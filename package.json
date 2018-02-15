@@ -1,0 +1,21 @@
+{
+  "name": "bitcoin",
+  "version": "1.0.0",
+  "description": "CRUD Node JS RESTful API using Express engine",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon server.js"
+  },
+  "author": "Daniel Mbeyah",
+  "license": "ISC",
+  "dependencies": {
+    "bitcore-lib": "^0.15.0",
+    "body-parser": "^1.18.2",
+    "express": "^4.16.2",
+    "jsonwebtoken": "^8.1.1",
+    "mongodb": "^2.2.34"
+  },
+  "devDependencies": {
+    "nodemon": "^1.14.12"
+  }
+}
