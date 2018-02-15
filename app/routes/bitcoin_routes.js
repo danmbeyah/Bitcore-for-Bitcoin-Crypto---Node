@@ -3,9 +3,12 @@ var bitcore = require('bitcore');
 const jwt = require('jsonwebtoken');
 const secret = 'lanisters';
 
-var privateKeyWIF = 'cTjUoe2Dw8MT6NGX2gMvkdWoGjLt5WiQjM7yiZDcB4peDDWQdna9';
-
 var Address = bitcore.address;
+var hdPrivateKeys = [
+	'xprv9s21ZrQH143K4E8g93RbL7F2PsZfzq6WmDTdVosui3xD5DvmaMzTGaMYP1HkEDRjPFc1hwDFCApUzb4TJvHLvbpxp15fbMB3Zon4yQQ4fut',
+	'xprv9s21ZrQH143K2yNcycUEYWgJA97ZQTKuBk7TToapfx6obNhV6RTu7UDshUKPKtouzxT3XewFZ5pJzBeDXaYL8Kr8AdbjVfFK2B8fwtBKSFV',
+	'xprv9s21ZrQH143K2bR5tXjAsNvPDr894YYHS4j7bvtCyjd8QxetPuArwJbahRzzSZtjiMg4pjS63MLPWPjjcf39aDSGLdBPRX9XHoN82rQTiZC'
+];
 
 module.exports = function(app,db){
 	//Login
@@ -25,7 +28,7 @@ module.exports = function(app,db){
 		})
 	})
 
-	//generate a 2-of-3 multisig P2SH address address
+	//generate a 2-of-3 multisig P2SH address
 	app.get('/generate_address', verifyToken, (req, res) => {
 		jwt.verify(req.token, secret, (err, authData) => {
 			if(err){
@@ -40,7 +43,7 @@ module.exports = function(app,db){
 				];
 				var requiredSignatures = 2;
 
-				var address = new bitcore.Address(publicKeys, requiredSignatures);
+				var address = new bitcore.Address(publicKeys, requiredSignatures).toString();
 
 				console.log(address);
 
@@ -51,7 +54,26 @@ module.exports = function(app,db){
 		})
 	})
 
-	//generate address using HD Keys
+	//generate HD private Keys
+	app.get('/generate_hd_private_keys', verifyToken, (req, res) => {
+		jwt.verify(req.token, secret, (err, authData) => {
+			if(err){
+				res.json({
+					error: 'You are an imposter, only Lanisters have access to 12 kingdoms API'
+				})
+			}else{
+				var HDPrivateKey = bitcore.HDPrivateKey;
+
+				var hdPrivateKey = new HDPrivateKey();
+
+				res.json({
+					HD_private_key: hdPrivateKey.toString()
+				})
+			}
+		})
+	})
+
+	//generate a 2-of-3 address using HD Keys
 	app.get('/generate_address_hd', verifyToken, (req, res) => {
 		jwt.verify(req.token, secret, (err, authData) => {
 			if(err){
@@ -61,7 +83,7 @@ module.exports = function(app,db){
 			}else{
 				var HDPrivateKey = bitcore.HDPrivateKey;
 
-				var hdPrivateKey = new HDPrivateKey("xprv9s21ZrQH143K4E8g93RbL7F2PsZfzq6WmDTdVosui3xD5DvmaMzTGaMYP1HkEDRjPFc1hwDFCApUzb4TJvHLvbpxp15fbMB3Zon4yQQ4fut");
+				var hdPrivateKey = new HDPrivateKey();
 
 				// obtain HDPublicKey
 				var publicKey = hdPrivateKey.hdPublicKey.derive("m/0/2/2/0/1").publicKey;
