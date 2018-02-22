@@ -1,5 +1,6 @@
 var ObjectID = require('mongodb').ObjectID;
 var bitcore = require('bitcore');
+
 const jwt = require('jsonwebtoken');
 const secret = 'lanisters';
 
@@ -9,6 +10,8 @@ var hdPrivateKeys = [
 	'xprv9s21ZrQH143K2yNcycUEYWgJA97ZQTKuBk7TToapfx6obNhV6RTu7UDshUKPKtouzxT3XewFZ5pJzBeDXaYL8Kr8AdbjVfFK2B8fwtBKSFV',
 	'xprv9s21ZrQH143K2bR5tXjAsNvPDr894YYHS4j7bvtCyjd8QxetPuArwJbahRzzSZtjiMg4pjS63MLPWPjjcf39aDSGLdBPRX9XHoN82rQTiZC'
 ];
+
+var hdPublicKeys = [];
 
 module.exports = function(app,db){
 	//Login
@@ -33,7 +36,7 @@ module.exports = function(app,db){
 		jwt.verify(req.token, secret, (err, authData) => {
 			if(err){
 				res.json({
-					error: 'You are an imposter, only Lanisters have access to 12 kingdoms API'
+					error: 'You are an imposter, only Lanisters have access to Kings Landing API'
 				})
 			}else{
 				var publicKeys = [
@@ -59,7 +62,7 @@ module.exports = function(app,db){
 		jwt.verify(req.token, secret, (err, authData) => {
 			if(err){
 				res.json({
-					error: 'You are an imposter, only Lanisters have access to 12 kingdoms API'
+					error: 'You are an imposter, only Lanisters have access to Kings Landing API'
 				})
 			}else{
 				var HDPrivateKey = bitcore.HDPrivateKey;
@@ -73,25 +76,31 @@ module.exports = function(app,db){
 		})
 	})
 
-	//generate a 2-of-3 address using HD Keys
+	//generate a 2-of-3 bitcoin address using HD Keys
 	app.get('/generate_address_hd', verifyToken, (req, res) => {
 		jwt.verify(req.token, secret, (err, authData) => {
 			if(err){
 				res.json({
-					error: 'You are an imposter, only Lanisters have access to 12 kingdoms API'
+					error: 'You are an imposter, only Lanisters have access to Kings Landing API'
 				})
 			}else{
 				var HDPrivateKey = bitcore.HDPrivateKey;
 
-				var hdPrivateKey = new HDPrivateKey();
+				for (var i = hdPrivateKeys.length - 1; i >= 0; i--) {
+					
+					var hdPrivateKey = new HDPrivateKey(hdPrivateKeys[i]);
 
-				// obtain HDPublicKey
-				var publicKey = hdPrivateKey.hdPublicKey.derive("m/0/2/2/0/1").publicKey;
-				var address = publicKey.toAddress();
+					// derive HDPublicKey using BIP32 path https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki
+					hdPublicKeys[i] = hdPrivateKey.hdPublicKey.derive("m/44'/1'/0'/0/0").publicKey;
+				}
+
+				//Number of public keys required needed to generate a bitcoin address i.e 2/3
+				var requiredSignatures = 2;
+
+				var address = new bitcore.Address(hdPublicKeys, requiredSignatures);
 
 				res.json({
-					address: address.toString(),
-					public_key: publicKey.toString()
+					address: address.toString()
 				})
 			}
 		})
@@ -102,7 +111,21 @@ module.exports = function(app,db){
 		jwt.verify(req.token, secret, (err, authData) => {
 			if(err){
 				res.json({
-					error: 'You are an imposter, only Lanisters have access to 12 kingdoms API'
+					error: 'You are an imposter, only Lanisters have access to Kings Landing API'
+				})
+			}else{
+
+
+			}
+		})
+	})
+
+	//create transaction
+	app.post('/transaction_old', verifyToken, (req, res) =>{
+		jwt.verify(req.token, secret, (err, authData) => {
+			if(err){
+				res.json({
+					error: 'You are an imposter, only Lanisters have access to Kings Landing API'
 				})
 			}else{
 				var from_address = req.body.from_address;

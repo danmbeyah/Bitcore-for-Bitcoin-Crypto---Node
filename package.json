@@ -9,6 +9,7 @@
   "author": "Daniel Mbeyah",
   "license": "ISC",
   "dependencies": {
+    "bitcore-explorers": "^1.0.1",
     "bitcore-lib": "^0.15.0",
     "body-parser": "^1.18.2",
     "express": "^4.16.2",
