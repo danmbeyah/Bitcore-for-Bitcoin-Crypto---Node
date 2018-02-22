@@ -3,4 +3,5 @@ This is a NodeJS RESTfull API which uses Bitcore library to generate Bitcoin add
 
 # Installation
 (Pre-requisites: Node is already installed and running)
+
 npm install bitcore
