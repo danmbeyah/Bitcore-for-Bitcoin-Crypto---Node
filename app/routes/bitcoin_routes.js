@@ -1,14 +1,25 @@
 var ObjectID = require('mongodb').ObjectID;
 var bitcore = require('bitcore');
+//var Insight = require('bitcore-explorers').Insight;
 
 const jwt = require('jsonwebtoken');
 const secret = 'lanisters';
 
+const error_msg = 'You are an imposter, only Lanisters have access to Kings Landing API at the moment';
+/* 
+ * derive HDPublicKey for this address using BIP32 path https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki
+ * m/purpose/coin_type/account/change/address_index
+ * coint_type 0=Bitcoin 1=Bitcoin Testnet, account=a/c or user id
+ */
+const bip_derive_path = "m/44/1/0/0/0";
+
 var Address = bitcore.address;
-var hdPrivateKeys = [
-	'xprv9s21ZrQH143K4E8g93RbL7F2PsZfzq6WmDTdVosui3xD5DvmaMzTGaMYP1HkEDRjPFc1hwDFCApUzb4TJvHLvbpxp15fbMB3Zon4yQQ4fut',
-	'xprv9s21ZrQH143K2yNcycUEYWgJA97ZQTKuBk7TToapfx6obNhV6RTu7UDshUKPKtouzxT3XewFZ5pJzBeDXaYL8Kr8AdbjVfFK2B8fwtBKSFV',
-	'xprv9s21ZrQH143K2bR5tXjAsNvPDr894YYHS4j7bvtCyjd8QxetPuArwJbahRzzSZtjiMg4pjS63MLPWPjjcf39aDSGLdBPRX9XHoN82rQTiZC'
+
+//Generated using /generate_hd_private_keys API. Store securely in config and not as implemnted here.
+const hdPrivateKeys = [
+	"xprv9s21ZrQH143K3PyFnjECi5h582c2Jy1C2tArHAQrxRhfEhkofL4btQCH24vQ9QaLoiwdnNkdNDjntBa1EiCaJaGnx1Qng6byc58HZW9dH1r",
+	"xprv9s21ZrQH143K3VNPdhHXBt9UMbtB3mykBXVmEsfyF1a6M9S3DMqWPzj7zDMtNEQu5N6yGkB86oFQ3fWsRThQ8S5jnXcP3sMJP1qU9QNc9Du",
+	"xprv9s21ZrQH143K2Vmrq4KEQaNXiZ6UfCzJvuCABQcTv2VZfTz2ekkrt6At9ZUScqETr7dZu3iBKBAacBwtg6wcaJUtYQ61qUo6w3TsYXSCBoZ"
 ];
 
 var hdPublicKeys = [];
@@ -36,7 +47,7 @@ module.exports = function(app,db){
 		jwt.verify(req.token, secret, (err, authData) => {
 			if(err){
 				res.json({
-					error: 'You are an imposter, only Lanisters have access to Kings Landing API'
+					error: error_msg
 				})
 			}else{
 				var publicKeys = [
@@ -62,7 +73,7 @@ module.exports = function(app,db){
 		jwt.verify(req.token, secret, (err, authData) => {
 			if(err){
 				res.json({
-					error: 'You are an imposter, only Lanisters have access to Kings Landing API'
+					error: error_msg
 				})
 			}else{
 				var HDPrivateKey = bitcore.HDPrivateKey;
@@ -81,7 +92,7 @@ module.exports = function(app,db){
 		jwt.verify(req.token, secret, (err, authData) => {
 			if(err){
 				res.json({
-					error: 'You are an imposter, only Lanisters have access to Kings Landing API'
+					error: error_msg
 				})
 			}else{
 				var HDPrivateKey = bitcore.HDPrivateKey;
@@ -89,18 +100,63 @@ module.exports = function(app,db){
 				for (var i = hdPrivateKeys.length - 1; i >= 0; i--) {
 					
 					var hdPrivateKey = new HDPrivateKey(hdPrivateKeys[i]);
-
-					// derive HDPublicKey using BIP32 path https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki
-					hdPublicKeys[i] = hdPrivateKey.hdPublicKey.derive("m/44'/1'/0'/0/0").publicKey;
+					
+					hdPublicKeys[i] = hdPrivateKey.hdPublicKey.derive(bip_derive_path).publicKey;
 				}
 
-				//Number of public keys required needed to generate a bitcoin address i.e 2/3
+				//Number of public keys required to generate a bitcoin address i.e 2/3
 				var requiredSignatures = 2;
 
 				var address = new bitcore.Address(hdPublicKeys, requiredSignatures);
 
 				res.json({
-					address: address.toString()
+					Bitcoin_address: address.toString()
+				})
+			}
+		})
+	})
+
+	//create multisig transaction
+	app.post('/transaction1', verifyToken, (req, res) =>{
+		jwt.verify(req.token, secret, (err, authData) => {
+			if(err){
+				res.json({
+					error: error_msg
+				})
+			}else{
+				var to_address = req.body.to_address;
+				var amount = req.body.amount*1;
+				var HDPrivateKey = bitcore.HDPrivateKey;
+
+				for (var i = hdPrivateKeys.length - 1; i >= 0; i--) {
+					
+					var hdPrivateKey = new HDPrivateKey(hdPrivateKeys[i]);
+					
+					hdPublicKeys[i] = hdPrivateKey.hdPublicKey.derive(bip_derive_path).publicKey;
+				}
+
+				//Number of public keys required to generate a bitcoin address i.e 2/3
+				var requiredSignatures = 2;
+
+				//Generate change address
+				var address = new bitcore.Address(hdPublicKeys, requiredSignatures);
+
+				var utxo = {
+				  "txId" : "153068cdd81b73ec9d8dcce27f2c77ddda12dee3db424bff5cafdbe9f01c1756",
+				  "outputIndex" : 0,
+				  "address" : address.toString(),
+				  "script" : new bitcore.Script(address).toHex(),
+				  "satoshis" : amount
+				};
+
+				var multiSigTx = new bitcore.Transaction()
+				    .from(utxo, hdPublicKeys, requiredSignatures)
+				    .to(to_address, amount)
+				    .change(address);
+				    //.sign(hdPrivateKeys);
+
+				res.json({
+					Serialize: multiSigTx.toObject()
 				})
 			}
 		})
@@ -111,21 +167,7 @@ module.exports = function(app,db){
 		jwt.verify(req.token, secret, (err, authData) => {
 			if(err){
 				res.json({
-					error: 'You are an imposter, only Lanisters have access to Kings Landing API'
-				})
-			}else{
-
-
-			}
-		})
-	})
-
-	//create transaction
-	app.post('/transaction_old', verifyToken, (req, res) =>{
-		jwt.verify(req.token, secret, (err, authData) => {
-			if(err){
-				res.json({
-					error: 'You are an imposter, only Lanisters have access to Kings Landing API'
+					error: error_msg
 				})
 			}else{
 				var from_address = req.body.from_address;
@@ -140,13 +182,15 @@ module.exports = function(app,db){
 				  "satoshis" : 50000
 				};
 
-				var transaction = new bitcore.Transaction()
+				var tx = new bitcore.Transaction()
 			    .from(utxo)
 			    .to(to_address, amount)
+			    .change(from_address)
+			    .fee(50000)
 			    .sign(privateKey);
 
 			    res.json({
-					transaction: transaction
+					transaction: tx.toObject()
 				})
 			}
 		})
